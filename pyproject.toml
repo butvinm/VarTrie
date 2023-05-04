@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "vartrie"
 version = "0.1.0"
-description = "Variable Trie - prefix trie with several alternatives for each character"
+description = "VarTrie - prefix trie with set of forms for each character"
 authors = ["ohtie <butvin.mihail@yandex.ru>"]
 license = "MIT"
 readme = "README.md"
