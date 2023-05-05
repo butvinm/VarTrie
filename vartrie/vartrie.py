@@ -32,7 +32,7 @@ class VarTrie(Container[str]):
             char_table: A dict mapping each letter to a set of its possible forms.
         """
 
-        self._root: Node = self._build(words, char_table)
+        self.root: Node = self._build(words, char_table)
 
     def _build_word(self, root: Node, word: str, char_table: dict[str, set[str]]) -> Node:
         """
@@ -102,7 +102,7 @@ class VarTrie(Container[str]):
         if not isinstance(word, str):
             raise TypeError('word must be str, not ' + type(word).__name__)
 
-        current_dict = self._root
+        current_dict = self.root
         for letter in word:
             if not letter in current_dict:
                 return False
