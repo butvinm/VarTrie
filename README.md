@@ -6,11 +6,7 @@ VarTrie (Variable Trie) allows searching for words in different forms. In some s
 
 ## Installation
 
-You can install VarTrie using pip.
-
-```bash
-pip install VarTrie
-```
+> Not yet available on PyPI
 
 ## Usage
 
