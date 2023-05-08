@@ -1,46 +1,54 @@
 # VarTrie
 
-VarTrie is a Python package that provides a container class for storing a set of words and efficiently querying whether a given string is in the set or not. 
+VarTrie is a python package that provides a prefix trie for words with letters that have variable forms.
 
-Instead of classic trie VarTrie allows to specify a set of valid forms for each character in the words. For example, if the character table contains the character "p" with the forms "p" and "P", then the words "python" and "Python" are both considered to be in the set.
+VarTrie (Variable Trie) allows searching for words in different forms. In some scenarios, this can be useful to filter out inappropriate words, to fine transliterated or obfuscated words, etc.
 
 ## Installation
 
-> NotImplementedError: VarTrie is not yet available on PyPI.
+You can install VarTrie using pip.
+
+```bash
+pip install VarTrie
+```
 
 ## Usage
 
-### Creating a VarTrie object
-
-To create a VarTrie object, you need to provide a set of words and a character table that specifies the valid forms for each character in the words. Here's an example:
+Here is a simple example of how to use VarTrie.
 
 ```python
 from vartrie import VarTrie
 
-words = {'hello', 'world', 'python', 'pycon'}
-char_table = {'p': {'p', 'P'}, 'y': {'y', 'Y'}}
+words = {'apple', 'banana', 'apricot'}
+chars_table = {'a': {'á', '@-'}, 'e': {'e', 'é', 'É'}}
+trie = VarTrie(chars_table, words)
 
-trie = VarTrie(words, char_table)
+trie.search('@-pplÉ')  # True
+trie.search('apple')  # False (because 'a' is not in chars_table)
+
+trie.search_prefix('báná')  # True
+
+trie.insert('pear')
+trie.search('pÉár')  # True
 ```
 
-This creates a VarTrie object containing the words "hello", "world", "python", and "pycon". The character table specifies that the characters "p" and "y" can take two forms: "p" or "P", and "y" or "Y", respectively.
+In this example, `words` is a set of words to be inserted into the trie, and `chars_table` is a dictionary that maps each letter to a set of its possible forms. For instance, `chars_table['a']` is a set of alternative forms of letter 'a', including 'á' and '@-'. If a letter is not in the `chars_table`, it is assumed to have only one form, itself.
 
-### Checking if a string is in the set
+To create a VarTrie object, we need to provide `chars_table` and `words` (optional). After creating a VarTrie object, we can search for words by calling `search` method with a word to be searched. We can also search for a prefix of a word by calling `search_prefix` method with a prefix to be searched.
 
-To check whether a string is in the set of words, you can use the `in` operator:
 
-```python
-'python' in trie   # True
-'PyCon' in trie    # True
-'foobar' in trie   # False
-```
+## Performance and space complexity
 
-Note that the `in` operator is case-insensitive, because of the character table.
+> more details will be added soon
 
-## License
+For set of 47k words with chars_table of 26 letters with about 20 forms per letter, the trie build in 0.05 second, has 4000 nodes and takes 50kb as pickle file.
 
-VarTrie is released under the MIT License. See LICENSE file for details.
+Searching of 47k obfuscated words takes 0.5 second. Search of 47k words not represented in the trie takes 1.5 second.
 
 ## Contributing
 
-If you have found a bug or have a feature request, please create an issue on GitHub. If you would like to contribute code, please fork the repository and submit a pull request.
+We welcome contributions! If you find any bugs or have any ideas for new features, please create an issue or a pull request on GitHub.
+
+## License
+
+VarTrie is released under the MIT License
