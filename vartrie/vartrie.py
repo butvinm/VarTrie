@@ -1,112 +1,246 @@
-from typing import Container
+"""VarTrie package.
 
-Node = dict[str, "Node"]
+Provide prefix trie for words with letters that have variable forms.
 
-END = "_end_"
+Example:
+    words = {'apple', 'banana', 'apricot'}
+    chars_table = {'a': {'á', '@-'}, 'e': {'e', 'é', 'É'}}
+    trie = VarTrie(chars_table, words)
+
+    '@-pplÉ' in trie  # True
+    'apple' in trie  # False (because 'a' is not in chars_table)
+
+Inspirations:
+    Search for words in different forms is common task in text processing.
+    For example, in a chat application, we may want to filter out bad words
+    in messages. However, some letters in bad words may be replaced with
+    similar-looking letters, such as 'a' with '@' or 'e' with 'é'. In this
+    case, we need to search for words in different forms. But if we have
+    a large number of words, it may be inefficient to search for each word
+    in all its forms. This is where VarTrie comes in handy.
+
+    In one of my projects I process 47k words with about 20 forms each
+    with VarTrie in milliseconds.
+"""
 
 
-class VarTrie(Container[str]):
-    """
-    A variable-forms trie for efficiently storing and retrieving a set of words.
+from typing import DefaultDict, Optional
 
-    The trie is constructed using a set of words and a character table, which maps each letter
-    to a set of its possible forms. For example, the letter 'a' may have uppercase and lowercase
-    forms, and accented forms in other languages.
 
-    The trie can then be used to efficiently test whether a given word is in the set of words.
+class Node(DefaultDict[frozenset[str], 'Node']):
+    """Node of VarTrie."""
+
+    def __init__(self, is_end: bool = False):
+        """Initialize Node.
+
+        Args:
+            is_end (bool):
+                Whether this node is the end of a word. Defaults to False.
+        """
+        super().__init__()
+        self.is_end = is_end
+        self.default_factory = Node
+
+    def __repr__(self) -> str:
+        """Return Node string representation as dict.
+
+        Returns:
+            str: Node dictionary representation.
+        """
+        return str(dict(self))
+
+
+class VarTrie:
+    """Prefix trie with letters that have variable forms.
+
+    The trie is constructed using a set of words and a characters table,
+    which maps each letter to a set of its possible forms.
+
+    Characters table rules:
+        If a letter is not in the characters table, it is assumed to have
+        only one form, itself.
+
+        If letter in the characters table, but its forms do not include itself,
+        it will not be included in the trie.
+
+        For chars_table = {'a': {'á', '@-'}, 'e': {'e', 'é', 'É'}}
+        'a' will have three forms, 'á', '@-', but not 'a',
+        'b' will have only one form, 'b',
+        'e' will have three forms, 'e', 'é', 'É'.
 
     Example:
-        words = {'apple', 'banana', 'orange', 'pear'}
-        char_table = {'a': {'a', 'A', 'á', 'Á'}, 'e': {'e', 'é', 'É'}, ...}
-        trie = VarTrie(words, char_table)
-        'banAnÁ' in trie  # True
-        'kiwi' in trie   # False
+        words = {'apple', 'banana', 'apricot'}
+        chars_table = {'a': {'á', '@-'}, 'e': {'e', 'é', 'É'}}
+        trie = VarTrie(chars_table, words)
+
+        '@-pplÉ' in trie  # True
+        'apple' in trie  # False (because 'a' is not in chars_table)
     """
 
-    def __init__(self, words: set[str], char_table: dict[str, set[str]]) -> None:
-        """
-        Constructs a new VarTrie from a set of words and a character table.
+    def __init__(
+        self,
+        chars_table: dict[str, set[str]],
+        words: Optional[set[str]] = None,
+    ):
+        """Initialize VarTrie from provided characters table and words.
 
         Args:
-            words: A set of words to store in the trie.
-            char_table: A dict mapping each letter to a set of its possible forms.
+            chars_table (dict[str, set[str]]):
+                Maps each letter to a set of its possible forms.
+            words (set[str]):
+                Words to be inserted into the trie.
+                Defaults empty trie created.
         """
+        self.root = Node()
+        self.chars_table = self._froze_chars_table(chars_table)
+        if words is not None:
+            self.insert_all(words)
 
-        self.root: Node = self._build(words, char_table)
-
-    def _build_word(self, root: Node, word: str, char_table: dict[str, set[str]]) -> Node:
-        """
-        Recursively builds a node in the trie for a given word.
-
-        First, node for the first letter of the word built recursively. 
-        Then, the remaining letters are added as copy of the first letter's node. 
+    def insert(self, word: str) -> None:
+        """Insert word into the trie.
 
         Args:
-            root: The root node of the trie subtree to build on.
-            word: The word to add to the trie.
-            char_table: A dict mapping each letter to a set of its possible forms.
+            word (str): Word to be inserted.
+        """
+        node = self.root
+        while word:
+            char = word[0]
+            word = word[1:]
+            forms = self._get_char_forms(char)
+            node = node[forms]
+
+        node.is_end = True
+
+    def insert_all(self, words: set[str]) -> None:
+        """Insert all words into the trie.
+
+        Args:
+            words (set[str]): Words to be inserted.
+        """
+        for word in words:
+            self.insert(word)
+
+    def search(self, word: str) -> bool:
+        """Return whether the word is in the trie.
+
+        Args:
+            word (str): Word to be searched.
 
         Returns:
-            The node in the trie corresponding to the last letter of the word.
+            bool: Whether the word is in the trie.
         """
+        return self._search(self.root, word)
 
-        if not word:
-            root[END] = {}
-            return root
+    def search_prefix(self, prefix: str) -> bool:
+        """Return whether the prefix is a prefix of a word in the trie.
 
-        current_dict = root
+        Args:
+            prefix (str): Prefix to be searched.
 
-        init_letter = word[0]
-        forms = char_table.get(init_letter, {init_letter}).copy()
+        Returns:
+            bool: Whether the prefix is a prefix of a word in the trie.
+        """
+        return self._search_prefix(self.root, prefix)
 
-        letter_node = self._build_word(
-            current_dict.setdefault(forms.pop(), {}),
-            word[1:],
-            char_table
+    @classmethod
+    def _froze_chars_table(
+        cls,
+        chars_table: dict[str, set[str]],
+    ) -> dict[str, frozenset[str]]:
+        """Return frozenset version of chars_table.
+
+        Args:
+            chars_table (dict[str, set[str]]): Characters table.
+
+        Returns:
+            dict[str, frozenset[str]]: Frozenset version of chars_table.
+        """
+        return {char: frozenset(forms) for char, forms in chars_table.items()}
+
+    def _get_char_forms(self, char: str) -> frozenset[str]:
+        """Return set of forms of a character.
+
+        If the character is not in the characters table, it is assumed to have
+        only one form, itself.
+
+        Args:
+            char (str): Character to get forms of.
+
+        Returns:
+            set[str]: Set of forms of the character.
+        """
+        forms = self.chars_table.get(char)
+        if forms is None:
+            return frozenset((char, ))
+
+        return forms
+
+    def _get_descendants(
+        self,
+        node: Node,
+        word: str,
+    ) -> list[tuple[str, Node]]:
+        """Return list of descendants of node that match word.
+
+        Find all forms that match word prefix and return their nodes.
+
+        Args:
+            node (Node): Node to get descendants of.
+            word (str): Word to match descendants against.
+
+        Returns:
+            list[tuple[str, Node]]:
+                List of descendants of node that match word.
+        """
+        nodes = []
+        for forms, forms_node in node.items():
+            sorted_forms = sorted(forms, key=len, reverse=True)
+            for form in sorted_forms:
+                if word.startswith(form):
+                    nodes.append((form, forms_node))
+
+        return nodes
+
+    def _search(self, node: Node, word: str) -> bool:
+        """Return whether the word is in the trie.
+
+        Args:
+            node (Node): Node to search word in.
+            word (str): Word to be searched.
+
+        Returns:
+            bool: Whether the word is in the trie.
+        """
+        descendants = self._get_descendants(node, word)
+        if not descendants:
+            return False
+
+        if any(word == prefix and node.is_end for prefix, node in descendants):
+            return True
+
+        return any(
+            self._search(node, word.removeprefix(prefix))
+            for prefix, node in descendants
         )
 
-        for form in forms:
-            current_dict[form] = letter_node
-
-        return current_dict
-
-    def _build(self, words: set[str], char_table: dict[str, set[str]]) -> Node:
-        """
-        Builds the entire trie from a set of words and a character table.
+    def _search_prefix(self, node: Node, prefix: str) -> bool:
+        """Return whether the prefix is a prefix of a word in the trie.
 
         Args:
-            words: A set of words to store in the trie.
-            char_table: A dict mapping each letter to a set of its possible forms.
+            node (Node): Node to search prefix in.
+            prefix (str): Prefix to be searched.
 
         Returns:
-            The root node of the trie.
+            bool: Whether the prefix is a prefix of a word in the trie.
         """
+        descendants = self._get_descendants(node, prefix)
+        if not descendants:
+            return False
 
-        root: Node = dict()
-        for word in words:
-            self._build_word(root, word, char_table)
+        if any(d_prefix == prefix for d_prefix, _ in descendants):
+            return True
 
-        return root
-
-    def __contains__(self, word: object) -> bool:
-        """
-        Tests whether a given word is in the set of words stored in the trie.
-
-        Args:
-            word: The word to test.
-
-        Returns:
-            True if the word is in the trie, False otherwise.
-        """
-
-        if not isinstance(word, str):
-            raise TypeError('word must be str, not ' + type(word).__name__)
-
-        current_dict = self.root
-        for letter in word:
-            if not letter in current_dict:
-                return False
-
-            current_dict = current_dict[letter]
-
-        return END in current_dict
+        return any(
+            self._search_prefix(node, prefix.removeprefix(word))
+            for word, node in descendants
+        )
