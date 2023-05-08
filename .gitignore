@@ -4,6 +4,8 @@
 
 .*
 !.gitignore
+develop/
+tests/devtests/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
