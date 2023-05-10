@@ -10,8 +10,7 @@ from vartrie import VarTrie
 def words():
     return {
         'apple', 'banana', 'apricot',
-        'melon', 'mango', 'mangoes',
-        'pineapple', 'pear', 'peach',
+        'melon', 'mango', 'pineapple', 'pear', 'peach',
     }
 
 
@@ -52,6 +51,8 @@ def words_prefixes(words: set[str], chars_table: dict[str, set[str]]) -> set[str
                     prefix_form += char
                 else:
                     prefix_form += choice(tuple(chars_table[char]))
+
+            words_prefixes.add(prefix_form)
 
     return words_prefixes
 

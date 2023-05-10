@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vartrie"
-version = "1.1.0"
+version = "1.2.0"
 description = "VarTrie - prefix trie with set of forms for each character"
 authors = ["ohtie <butvin.mihail@yandex.ru>"]
 license = "MIT"
